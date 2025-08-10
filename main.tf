@@ -92,13 +92,28 @@ resource "aws_security_group" "app_sg" {
 # EC2 Instance
 # -------------------------
 resource "aws_instance" "app_server" {
-  ami                    = "ami-0c02fb55956c7d316" # Amazon Linux 2 AMI in us-east-1
-  instance_type          = "t2.micro"
-  subnet_id              = aws_subnet.public_subnet.id
+  ami           = "ami-08a0d1e16fc3f61ea" # Amazon Linux 2 (us-east-1)
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.app_sg.id]
   associate_public_ip_address = true
 
+  # Key pair for SSH (optional but recommended)
+  key_name = "your-keypair-name" # Create in AWS Console if not already
+
+  user_data = <<-EOF
+    #!/bin/bash
+    yum update -y
+    amazon-linux-extras install docker -y
+    systemctl start docker
+    systemctl enable docker
+    usermod -aG docker ec2-user
+
+    # Pull and run your Docker image
+    docker run -d -p 80:80 ${var.image_name}
+  EOF
+
   tags = {
-    Name = "app-server"
+    Name = "docker-app-server"
   }
 }

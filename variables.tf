@@ -18,3 +18,7 @@ variable "image_name" {
   description = "Docker image name to deploy"
   type        = string
 }
+variable "image_name" {
+  description = "Docker image to run on EC2"
+  type        = string
+}
