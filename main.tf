@@ -1,10 +1,66 @@
+# -------------------------
+# VPC
+# -------------------------
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
+
   tags = {
     Name = "main-vpc"
   }
 }
 
+# -------------------------
+# Public Subnet
+# -------------------------
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  map_public_ip_on_launch = true
+  availability_zone       = "us-east-1a"
+
+  tags = {
+    Name = "public-subnet"
+  }
+}
+
+# -------------------------
+# Internet Gateway
+# -------------------------
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "main-igw"
+  }
+}
+
+# -------------------------
+# Route Table
+# -------------------------
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "public-rt"
+  }
+}
+
+# -------------------------
+# Route Table Association
+# -------------------------
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# -------------------------
+# Security Group
+# -------------------------
 resource "aws_security_group" "app_sg" {
   name        = "app-sg"
   description = "Allow HTTP and SSH"
@@ -32,37 +88,17 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
-
-# Get Amazon Linux 2 AMI
-data "aws_ami" "amazon_linux" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
-  }
-}
-
+# -------------------------
 # EC2 Instance
+# -------------------------
 resource "aws_instance" "app_server" {
-  ami                    = data.aws_ami.amazon_linux.id
+  ami                    = "ami-0c02fb55956c7d316" # Amazon Linux 2 AMI in us-east-1
   instance_type          = "t2.micro"
-  security_groups        = [aws_security_group.app_sg.name]
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
   associate_public_ip_address = true
 
-  user_data = <<-EOF
-              #!/bin/bash
-              yum update -y
-              amazon-linux-extras enable docker
-              yum install -y docker
-              service docker start
-              docker login ghcr.io -u ${var.github_username} -p ${var.github_token}
-              docker pull ghcr.io/${var.github_username}/${var.image_name}:latest
-              docker run -d -p 80:80 ghcr.io/${var.github_username}/${var.image_name}:latest
-              EOF
-
   tags = {
-    Name = "AppServer"
+    Name = "app-server"
   }
 }
