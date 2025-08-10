@@ -63,15 +63,8 @@ resource "aws_route_table_association" "public_assoc" {
 # -------------------------
 resource "aws_security_group" "app_sg" {
   name        = "app-sg"
-  description = "Allow HTTP and SSH"
+  description = "Allow HTTP only"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 
   ingress {
     from_port   = 80
@@ -92,14 +85,13 @@ resource "aws_security_group" "app_sg" {
 # EC2 Instance
 # -------------------------
 resource "aws_instance" "app_server" {
-  ami           = "ami-08a0d1e16fc3f61ea" # Amazon Linux 2 (us-east-1)
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public_subnet.id
-  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  ami                         = "ami-08a0d1e16fc3f61ea" # Amazon Linux 2 (us-east-1)
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.public_subnet.id
+  vpc_security_group_ids      = [aws_security_group.app_sg.id]
   associate_public_ip_address = true
 
-  # Key pair for SSH (optional but recommended)
-  key_name = "your-keypair-name" # Create in AWS Console if not already
+  # Removed key_name to avoid requiring an SSH key pair
 
   user_data = <<-EOF
     #!/bin/bash
